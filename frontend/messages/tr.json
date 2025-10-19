@@ -1,0 +1,16 @@
+{
+  "HomePage": {
+    "title": "Merhaba dünya!",
+    "about": "Hakkında sayfasına git"
+  },
+  "AboutPage": {
+    "title": "Hakkımızda",
+    "description": "Bu, uluslararasılaştırma desteği olan hakkında sayfasıdır.",
+    "backHome": "Ana Sayfaya Dön"
+  },
+  "Navigation": {
+    "home": "Ana Sayfa",
+    "about": "Hakkında",
+    "language": "Dil"
+  }
+} 
