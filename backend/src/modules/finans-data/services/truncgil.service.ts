@@ -104,22 +104,34 @@ export class TruncgilService {
       return 'CRYPTO';
     }
 
-    // Gold symbols
-    const goldSymbols = ['GRA', 'HAS', 'CEYREKALTIN', 'CUMHURIYETALTINI', 'YARIALTIN', 'TAMALTIN'];
+    // Gold symbols - including all gold-related products
+    const goldSymbols = [
+      'GRA', 'HAS', 'CEYREKALTIN', 'CUMHURIYETALTINI', 'YARIMALTIN', 'TAMALTIN',
+      'ATAALTIN', '14AYARALTIN', '18AYARALTIN', 'YIA', 'IKIBUCUKALTIN', 
+      'BESLIALTIN', 'GREMSEALTIN', 'RESATALTIN', 'HAMITALTIN', 'ALTIN'
+    ];
     if (goldSymbols.some(gold => symbol.includes(gold))) {
       return 'GOLD';
-    }
-
-    // Currency symbols
-    const currencySymbols = ['USD', 'EUR', 'GBP', 'CHF', 'JPY', 'CAD', 'AUD', 'SEK', 'NOK', 'DKK'];
-    if (currencySymbols.some(currency => symbol.includes(currency))) {
-      return 'CURRENCY';
     }
 
     // Index symbols
     const indexSymbols = ['XU100', 'XU030', 'BRENT', 'WTI'];
     if (indexSymbols.some(index => symbol.includes(index))) {
       return 'INDEX';
+    }
+
+    // Currency symbols - major currencies
+    const currencySymbols = [
+      'USD', 'EUR', 'GBP', 'CHF', 'JPY', 'CAD', 'AUD', 'SEK', 'NOK', 'DKK',
+      'RUB', 'AED', 'KWD', 'ZAR', 'BHD', 'LYD', 'SAR', 'IQD', 'ILS', 'IRR',
+      'INR', 'MXN', 'HUF', 'NZD', 'BRL', 'IDR', 'CZK', 'PLN', 'RON', 'CNY',
+      'ARS', 'ALL', 'AZN', 'BAM', 'CLP', 'COP', 'CRC', 'DZD', 'EGP', 'HKD',
+      'ISK', 'KRW', 'KZT', 'LBP', 'LKR', 'MAD', 'MDL', 'MKD', 'MYR', 'OMR',
+      'PEN', 'PHP', 'PKR', 'QAR', 'RSD', 'SGD', 'SYP', 'THB', 'TWD', 'UAH',
+      'UYU', 'GEL', 'TND', 'BGN', 'GUMUS'
+    ];
+    if (currencySymbols.some(currency => symbol.includes(currency))) {
+      return 'CURRENCY';
     }
 
     // Default fallback

@@ -3,14 +3,18 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export interface FinancialData {
+  id?: string;
   symbol: string;
   type: 'CRYPTO' | 'CURRENCY' | 'GOLD' | 'INDEX';
   price: number;
+  priceUSD?: number;
   change24h?: number;
   buyPrice?: number;
   sellPrice?: number;
   timestamp: string;
   source: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ApiResponse<T> {

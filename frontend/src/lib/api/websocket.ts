@@ -11,6 +11,7 @@ export interface WebSocketFinanceData {
   change24h?: number;
   priceUSD?: number;
   timestamp: string;
+  source?: string;
 }
 
 export class FinanceWebSocketService {

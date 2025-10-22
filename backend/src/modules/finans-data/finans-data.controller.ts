@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam } from '@nestjs/
 import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
 import { TruncgilService } from './services/truncgil.service';
 import { CacheService } from './services/cache.service';
-import { SchedulerService } from './services/scheduler.service';
+import { DynamicDataService } from './services/dynamic-data.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FinanceGateway } from './gateways/finance.gateway';
 
@@ -14,7 +14,7 @@ export class FinansDataController {
   constructor(
     private readonly truncgilService: TruncgilService,
     private readonly cacheService: CacheService,
-    private readonly schedulerService: SchedulerService,
+    private readonly dynamicDataService: DynamicDataService,
     private readonly prismaService: PrismaService,
     private readonly financeGateway: FinanceGateway,
   ) {}
@@ -203,11 +203,11 @@ export class FinansDataController {
   @ApiResponse({ status: 200, description: 'Data refresh triggered successfully' })
   async forceRefresh() {
     try {
-      await this.schedulerService.forceUpdate();
+      await this.dynamicDataService.forceBaseUpdate();
       
       return {
         success: true,
-        message: 'Data refresh triggered successfully',
+        message: 'Dynamic data refresh triggered successfully',
         timestamp: new Date().toISOString(),
       };
     } catch (error) {

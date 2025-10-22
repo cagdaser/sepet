@@ -63,7 +63,7 @@ export default function CanliPiyasalarPage() {
       change24h: item.change24h,
       priceUSD: item.priceUSD,
       timestamp: item.timestamp,
-      source: 'websocket',
+      source: item.source || 'websocket',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }));
@@ -260,10 +260,10 @@ export default function CanliPiyasalarPage() {
           }`}></div>
           <span>
             {isConnected 
-              ? '🔴 CANLI: Veriler gerçek zamanlı güncelleniyor (Her 30 saniye)' 
+              ? '🔴 CANLI: Dinamik simülasyon aktif (Saniye seviyesinde güncelleme)' 
               : connectionError 
                 ? `Bağlantı hatası: ${connectionError} - HTTP API kullanılıyor`
-                : 'Bağlanıyor... Gerçek zamanlı veri bekleniyor'}
+                : 'Bağlanıyor... Dinamik veri simülasyonu başlatılıyor'}
           </span>
         </div>
       </div>
@@ -307,7 +307,7 @@ export default function CanliPiyasalarPage() {
                 </div>
                 
                 {/* Gold Data Rows */}
-                {data.gold.slice(0, 6).map((item) => (
+                {data.gold.map((item) => (
                   <div key={item.symbol} className="grid grid-cols-4 gap-4 py-3 border-b border-gray-800">
                     <div className="text-white font-medium">
                       {item.symbol}
@@ -333,10 +333,10 @@ export default function CanliPiyasalarPage() {
             </CardContent>
           </Card>
 
-          {/* Exchange Rates */}
+          {/* Major Currencies */}
           <Card className="bg-gray-900 border-gray-700">
             <CardHeader>
-              <CardTitle className="text-white text-xl">Sarrafiye Fiyatları</CardTitle>
+              <CardTitle className="text-white text-xl">Ana Para Birimleri</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-1">
@@ -348,26 +348,22 @@ export default function CanliPiyasalarPage() {
                   <div></div>
                 </div>
                 
-                {/* Currency Data Rows */}
-                {[...data.currency, ...data.gold].filter(item => 
-                  ['YENİ ÇEYREK', 'ESKİ ÇEYREK', 'YENİ YARIM', 'ESKİ YARIM', 'YENİ TAM'].includes(item.symbol) ||
-                  ['USD', 'EUR', 'GBP'].includes(item.symbol)
-                ).slice(0, 6).map((item) => (
+                {/* Major Currency Data Rows */}
+                {data.currency.filter(item => 
+                  ['USD', 'EUR', 'GBP', 'CHF', 'JPY', 'CAD', 'AUD', 'RUB'].includes(item.symbol)
+                ).map((item) => (
                   <div key={item.symbol} className="grid grid-cols-4 gap-4 py-3 border-b border-gray-800">
                     <div className="text-white font-medium">
-                      {item.symbol.includes('ÇEYREK') || item.symbol.includes('YARIM') || item.symbol.includes('TAM') 
-                        ? item.symbol 
-                        : `${item.symbol} KURU`
-                      }
+                      {item.symbol}
                     </div>
                     <div className="text-center">
                       <span className={`${getChangeColorClass(item.change24h || 0)}`}>
-                        {getArrowIcon(item.change24h || 0)} {formatPrice(item.buyPrice || item.price)}
+                        {getArrowIcon(item.change24h || 0)} {formatPrice(item.buyPrice || item.price, 4)}
                       </span>
                     </div>
                     <div className="text-center">
                       <span className={`${getChangeColorClass(item.change24h || 0)}`}>
-                        {getArrowIcon(item.change24h || 0)} {formatPrice(item.sellPrice || item.price)}
+                        {getArrowIcon(item.change24h || 0)} {formatPrice(item.sellPrice || item.price, 4)}
                       </span>
                     </div>
                     <div className="text-right">
@@ -381,6 +377,131 @@ export default function CanliPiyasalarPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Second Row - Indices and Other Currencies */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          {/* Indices */}
+          {data.index.length > 0 && (
+            <Card className="bg-gray-900 border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-white text-xl">Endeksler</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1">
+                  {/* Header */}
+                  <div className="grid grid-cols-3 gap-4 py-2 border-b border-gray-600 text-gray-400 text-sm">
+                    <div></div>
+                    <div className="text-center">Fiyat</div>
+                    <div></div>
+                  </div>
+                  
+                  {/* Index Data Rows */}
+                  {data.index.map((item) => (
+                    <div key={item.symbol} className="grid grid-cols-3 gap-4 py-3 border-b border-gray-800">
+                      <div className="text-white font-medium">
+                        {item.symbol}
+                      </div>
+                      <div className="text-center">
+                        <span className={`${getChangeColorClass(item.change24h || 0)}`}>
+                          {getArrowIcon(item.change24h || 0)} {formatPrice(item.price, 2)}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className={`text-sm ${getChangeColorClass(item.change24h || 0)}`}>
+                          {formatPercentage(item.change24h || 0)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Other World Currencies */}
+          <Card className="bg-gray-900 border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-white text-xl">Diğer Para Birimleri</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1">
+                {/* Header */}
+                <div className="grid grid-cols-4 gap-4 py-2 border-b border-gray-600 text-gray-400 text-sm">
+                  <div></div>
+                  <div className="text-center">Alış</div>
+                  <div className="text-center">Satış</div>
+                  <div></div>
+                </div>
+                
+                {/* Other Currency Data Rows */}
+                {data.currency.filter(item => 
+                  !['USD', 'EUR', 'GBP', 'CHF', 'JPY', 'CAD', 'AUD', 'RUB'].includes(item.symbol)
+                ).slice(0, 10).map((item) => (
+                  <div key={item.symbol} className="grid grid-cols-4 gap-4 py-3 border-b border-gray-800">
+                    <div className="text-white font-medium">
+                      {item.symbol}
+                    </div>
+                    <div className="text-center">
+                      <span className={`${getChangeColorClass(item.change24h || 0)}`}>
+                        {getArrowIcon(item.change24h || 0)} {formatPrice(item.buyPrice || item.price, 4)}
+                      </span>
+                    </div>
+                    <div className="text-center">
+                      <span className={`${getChangeColorClass(item.change24h || 0)}`}>
+                        {getArrowIcon(item.change24h || 0)} {formatPrice(item.sellPrice || item.price, 4)}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-sm ${getChangeColorClass(item.change24h || 0)}`}>
+                        {formatPercentage(item.change24h || 0)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Crypto Section if available */}
+        {data.crypto.length > 0 && (
+          <div className="mt-6">
+            <Card className="bg-gray-900 border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-white text-xl">Kripto Paralar</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1">
+                  {/* Header */}
+                  <div className="grid grid-cols-3 gap-4 py-2 border-b border-gray-600 text-gray-400 text-sm">
+                    <div></div>
+                    <div className="text-center">Fiyat (USD)</div>
+                    <div></div>
+                  </div>
+                  
+                  {/* Crypto Data Rows */}
+                  {data.crypto.map((item) => (
+                    <div key={item.symbol} className="grid grid-cols-3 gap-4 py-3 border-b border-gray-800">
+                      <div className="text-white font-medium">
+                        {item.symbol}
+                      </div>
+                      <div className="text-center">
+                        <span className={`${getChangeColorClass(item.change24h || 0)}`}>
+                          {getArrowIcon(item.change24h || 0)} ${formatPrice(item.priceUSD || item.price, 2)}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className={`text-sm ${getChangeColorClass(item.change24h || 0)}`}>
+                          {formatPercentage(item.change24h || 0)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Last Update Info */}
         <div className="mt-6 text-center text-gray-400 text-sm">
