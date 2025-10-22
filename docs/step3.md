@@ -30,3 +30,37 @@
 - ✅ TypeScript hataları giderildi  
 - ✅ WebSocket bağlantısı çalışıyor
 - ✅ Real-time dinamik simülasyon aktif
+
+---
+
+## 🚀 **Binance API Entegrasyonu (Step 3.5)**
+
+Binance API entegrasyonu başarıyla tamamlandı! İşte commit özeti:
+
+**Commit Hash:** ca79e95  
+**Commit Message:** "feat: Add Binance API integration for crypto data"
+
+### ✅ Yeni Özellikler:
+- **BinanceService** - WebSocket ile gerçek zamanlı fiyat akışı
+- **960 kripto sembolü** (630 USDT, 330 TRY çifti) için destek
+- **WebSocket dependency'leri** (ws, @types/ws) eklendi
+
+### 🔗 Yeni API Endpoint'leri:
+- `GET /api/finance/crypto` - Tüm crypto verileri
+- `GET /api/finance/crypto/usdt` - USDT çiftleri
+- `GET /api/finance/crypto/try` - TRY çiftleri
+- `GET /api/finance/crypto/:symbol` - Belirli crypto sembolü
+
+### 🔧 Güncellemeler:
+- **TruncgilService** crypto sembollerini artık işlemiyor (Binance'e devredildi)
+- **Stats endpoint'i** Binance istatistikleri içeriyor
+- **Otomatik yeniden bağlanma** ile WebSocket stabilitesi
+- **Hata yönetimi** ve detaylı loglama
+
+### 📊 İstatistikler:
+- **8 dosya** değiştirildi
+- **14,958 satır** eklendi
+- **35 satır** silindi
+
+### 🎯 **Sonuç:**
+Artık kripto para verileri Binance'den gerçek zamanlı olarak alınıyor ve daha doğru fiyat bilgileri sağlanıyor. WebSocket bağlantısı sayesinde veriler sürekli güncelleniyor.
