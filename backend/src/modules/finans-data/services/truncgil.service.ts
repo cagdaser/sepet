@@ -69,6 +69,11 @@ export class TruncgilService {
         continue;
       }
 
+      // Skip crypto symbols - they are now handled by BinanceService
+      if (this.isCryptoSymbol(symbol)) {
+        continue;
+      }
+
       // Determine asset type based on symbol
       const type = this.getAssetType(symbol);
       
@@ -93,17 +98,14 @@ export class TruncgilService {
       }
     }
 
-    this.logger.log(`Normalized ${normalized.length} out of ${entries.length} symbols`);
+    this.logger.log(`Normalized ${normalized.length} out of ${entries.length} symbols (crypto symbols excluded)`);
     return normalized;
   }
 
   private getAssetType(symbol: string): 'CRYPTO' | 'GOLD' | 'CURRENCY' | 'INDEX' {
-    // Crypto currencies
-    const cryptoSymbols = ['BTC', 'ETH', 'BNB', 'USDT', 'ADA', 'SOL', 'DOT', 'AVAX', 'MATIC', 'LTC'];
-    if (cryptoSymbols.some(crypto => symbol.includes(crypto))) {
-      return 'CRYPTO';
-    }
-
+    // Note: Crypto currencies are now handled by BinanceService
+    // We skip crypto detection in TruncgilService to avoid duplicates
+    
     // Gold symbols - including all gold-related products
     const goldSymbols = [
       'GRA', 'HAS', 'CEYREKALTIN', 'CUMHURIYETALTINI', 'YARIMALTIN', 'TAMALTIN',
@@ -136,6 +138,13 @@ export class TruncgilService {
 
     // Default fallback
     return 'CURRENCY';
+  }
+  /**
+   * Filter out crypto-related symbols since they are now handled by BinanceService
+   */
+  private isCryptoSymbol(symbol: string): boolean {
+    const cryptoSymbols = ['BTC', 'ETH', 'BNB', 'USDT', 'ADA', 'SOL', 'DOT', 'AVAX', 'MATIC', 'LTC'];
+    return cryptoSymbols.some(crypto => symbol.includes(crypto));
   }
 
   async getSymbolData(symbol: string): Promise<NormalizedFinancialData | null> {

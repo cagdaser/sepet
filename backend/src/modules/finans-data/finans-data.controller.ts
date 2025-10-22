@@ -2,6 +2,7 @@ import { Controller, Get, Query, Param, Post, HttpException, HttpStatus } from '
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
 import { TruncgilService } from './services/truncgil.service';
+import { BinanceService } from './services/binance.service';
 import { CacheService } from './services/cache.service';
 import { DynamicDataService } from './services/dynamic-data.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -13,6 +14,7 @@ import { FinanceGateway } from './gateways/finance.gateway';
 export class FinansDataController {
   constructor(
     private readonly truncgilService: TruncgilService,
+    private readonly binanceService: BinanceService,
     private readonly cacheService: CacheService,
     private readonly dynamicDataService: DynamicDataService,
     private readonly prismaService: PrismaService,
@@ -222,6 +224,127 @@ export class FinansDataController {
     }
   }
 
+  @Get('crypto')
+  @ApiOperation({ summary: 'Get all crypto data from Binance' })
+  @ApiResponse({ status: 200, description: 'Returns all crypto currency data from Binance' })
+  async getAllCryptoData() {
+    try {
+      const data = await this.binanceService.getCryptoData();
+      
+      return {
+        success: true,
+        data,
+        source: 'binance',
+        timestamp: new Date().toISOString(),
+        count: data.length,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Failed to fetch crypto data from Binance',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('crypto/usdt')
+  @ApiOperation({ summary: 'Get USDT pairs from Binance' })
+  @ApiResponse({ status: 200, description: 'Returns USDT trading pairs from Binance' })
+  async getUSDTPairs() {
+    try {
+      const data = await this.binanceService.getUSDTPairs();
+      
+      return {
+        success: true,
+        data,
+        source: 'binance',
+        pair: 'USDT',
+        timestamp: new Date().toISOString(),
+        count: data.length,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Failed to fetch USDT pairs from Binance',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('crypto/try')
+  @ApiOperation({ summary: 'Get TRY pairs from Binance' })
+  @ApiResponse({ status: 200, description: 'Returns TRY trading pairs from Binance' })
+  async getTRYPairs() {
+    try {
+      const data = await this.binanceService.getTRYPairs();
+      
+      return {
+        success: true,
+        data,
+        source: 'binance',
+        pair: 'TRY',
+        timestamp: new Date().toISOString(),
+        count: data.length,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Failed to fetch TRY pairs from Binance',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('crypto/:symbol')
+  @ApiOperation({ summary: 'Get specific crypto symbol from Binance' })
+  @ApiParam({ name: 'symbol', description: 'Crypto symbol (e.g., BTCUSDT, ETHUSDT, BTCTRY)' })
+  @ApiResponse({ status: 200, description: 'Returns data for the specified crypto symbol' })
+  @ApiResponse({ status: 404, description: 'Crypto symbol not found' })
+  async getCryptoSymbol(@Param('symbol') symbol: string) {
+    try {
+      const data = await this.binanceService.getSymbolData(symbol.toUpperCase());
+      
+      if (!data) {
+        throw new HttpException(
+          {
+            success: false,
+            message: `Crypto symbol ${symbol} not found on Binance`,
+          },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      
+      return {
+        success: true,
+        data,
+        source: 'binance',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      
+      throw new HttpException(
+        {
+          success: false,
+          message: `Failed to fetch crypto symbol ${symbol} from Binance`,
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   @Get('stats')
   @ApiOperation({ summary: 'Get service statistics' })
   @ApiResponse({ status: 200, description: 'Returns service statistics' })
@@ -236,10 +359,20 @@ export class FinansDataController {
         select: { timestamp: true },
       });
 
+      // Get Binance service statistics
+      const binanceStats = {
+        webSocketConnected: this.binanceService.getWebSocketStatus(),
+        cachedSymbols: this.binanceService.getCachedSymbolsCount(),
+        loadedSymbols: this.binanceService.getLoadedSymbolsCount(),
+      };
+
       return {
         success: true,
         stats: {
-          cachedSymbols: cachedData?.length || 0,
+          truncgil: {
+            cachedSymbols: cachedData?.length || 0,
+          },
+          binance: binanceStats,
           lastUpdate: latestSnapshot?.timestamp || null,
           websocket: connectionStats,
           uptime: process.uptime(),

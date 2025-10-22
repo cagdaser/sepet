@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TruncgilService } from './services/truncgil.service';
+import { BinanceService } from './services/binance.service';
 import { CacheService } from './services/cache.service';
 import { DynamicDataService } from './services/dynamic-data.service';
 import { FinanceGateway } from './gateways/finance.gateway';
@@ -11,12 +12,14 @@ import { PrismaModule } from '../../prisma/prisma.module';
   controllers: [FinansDataController],
   providers: [
     TruncgilService,
+    BinanceService,
     CacheService,
     DynamicDataService,
     FinanceGateway,
   ],
   exports: [
     TruncgilService,
+    BinanceService,
     CacheService,
     DynamicDataService,
   ],
