@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getAllFinancialData, type FinancialData } from '@/lib/api/finance';
+import { getAllFinancialData, getRankedCryptoData, type FinancialData } from '@/lib/api/finance';
 import { getFinanceWebSocketService, WebSocketFinanceData } from '@/lib/api/websocket';
 
 interface GroupedFinancialData {
@@ -43,6 +43,7 @@ export default function CanliPiyasalarPage() {
     crypto: [],
     index: []
   });
+  const [rankedCrypto, setRankedCrypto] = useState<FinancialData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<string>('');
@@ -178,6 +179,26 @@ export default function CanliPiyasalarPage() {
       setLoading(false);
     }
   }, [groupDataByType]);
+
+  // Fetch ranked crypto data
+  useEffect(() => {
+    const fetchRankedCrypto = async () => {
+      try {
+        const response = await getRankedCryptoData(25);
+        if (response.success && response.data) {
+          setRankedCrypto(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching ranked crypto data:', error);
+      }
+    };
+
+    fetchRankedCrypto();
+    
+    // Refresh ranked crypto data every 5 minutes
+    const interval = setInterval(fetchRankedCrypto, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Fallback HTTP polling if WebSocket is not connected
   useEffect(() => {
@@ -463,45 +484,108 @@ export default function CanliPiyasalarPage() {
           </Card>
         </div>
 
-        {/* Crypto Section if available */}
-        {data.crypto.length > 0 && (
-          <div className="mt-6">
-            <Card className="bg-gray-900 border-gray-700">
-              <CardHeader>
-                <CardTitle className="text-white text-xl">Kripto Paralar</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-1">
-                  {/* Header */}
-                  <div className="grid grid-cols-3 gap-4 py-2 border-b border-gray-600 text-gray-400 text-sm">
-                    <div></div>
-                    <div className="text-center">Fiyat (USD)</div>
-                    <div></div>
-                  </div>
-                  
-                  {/* Crypto Data Rows */}
-                  {data.crypto.map((item) => (
-                    <div key={item.symbol} className="grid grid-cols-3 gap-4 py-3 border-b border-gray-800">
-                      <div className="text-white font-medium">
-                        {item.symbol}
+        {/* Top 25 Crypto Section - Stable Implementation */}
+        <div className="mt-6">
+          <Card className="bg-gray-900 border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-white text-xl">
+                Top 25 Kripto Para (Market Cap Sıralaması)
+                <span className="text-sm text-gray-400 font-normal ml-2">
+                  CoinMarketCap + Binance
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1">
+                {/* Enhanced Header */}
+                <div className="grid grid-cols-6 gap-4 py-2 border-b border-gray-600 text-gray-400 text-sm">
+                  <div className="text-center">#</div>
+                  <div>Coin</div>
+                  <div className="text-center">Fiyat (USD)</div>
+                  <div className="text-center">24h %</div>
+                  <div className="text-center">Market Cap</div>
+                  <div className="text-center">24h Volume</div>
+                </div>
+                
+                {/* Stable Top 25 Data - From merged crypto data with fallback */}
+                {(rankedCrypto.length > 0 ? rankedCrypto : data.crypto)
+                  .filter(item => item.symbol.endsWith('USDT'))
+                  .sort((a, b) => (a.rank || 999) - (b.rank || 999))
+                  .slice(0, 25)
+                  .map((item, index) => (
+                    <div key={item.symbol || index} className="grid grid-cols-6 gap-4 py-3 border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
+                      {/* Rank */}
+                      <div className="text-center text-gray-400 font-mono text-sm">
+                        {item.rank || (index + 1)}
                       </div>
+                      
+                      {/* Symbol */}
+                      <div className="text-white font-medium">
+                        <div className="flex items-center space-x-2">
+                          <div className="h-6 w-6 bg-gradient-to-r from-orange-400 to-yellow-500 rounded-full flex items-center justify-center">
+                            <span className="text-xs font-bold text-white">
+                              {(item.symbol?.replace('USDT', '').replace('TRY', '') || 'N/A').slice(0, 2).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            {item.symbol?.replace('USDT', '').replace('TRY', '') || 'N/A'}
+                            <div className="text-xs text-gray-400">
+                              {item.source || 'Binance'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Price */}
                       <div className="text-center">
-                        <span className={`${getChangeColorClass(item.change24h || 0)}`}>
-                          {getArrowIcon(item.change24h || 0)} ${formatPrice(item.priceUSD || item.price, 2)}
+                        <span className="text-white font-mono">
+                          ${formatPrice(item.priceUSD || item.price || 0, 
+                            (item.priceUSD || item.price || 0) < 1 ? 4 : 2)}
                         </span>
                       </div>
-                      <div className="text-right">
-                        <span className={`text-sm ${getChangeColorClass(item.change24h || 0)}`}>
+                      
+                      {/* 24h Change */}
+                      <div className="text-center">
+                        <span className={`flex items-center justify-center ${getChangeColorClass(item.change24h || 0)}`}>
+                          <span className="mr-1">{getArrowIcon(item.change24h || 0)}</span>
                           {formatPercentage(item.change24h || 0)}
                         </span>
                       </div>
+                      
+                      {/* Market Cap */}
+                      <div className="text-center text-sm">
+                        <span className="text-white font-mono">
+                          {item.marketCapFormatted || 
+                           (item.marketCap ? `$${(item.marketCap / 1e9).toFixed(2)}B` : '-')}
+                        </span>
+                      </div>
+                      
+                      {/* Volume */}
+                      <div className="text-center text-sm">
+                        <span className="text-white font-mono">
+                          {item.volume24hFormatted || 
+                           (item.volume24h ? `$${(item.volume24h / 1e6).toFixed(1)}M` : '-')}
+                        </span>
+                        {item.volumeChange24h && (
+                          <div className={`text-xs ${getChangeColorClass(item.volumeChange24h)}`}>
+                            {getArrowIcon(item.volumeChange24h)} {formatPercentage(item.volumeChange24h)}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+                
+                {/* No data state */}
+                {data.crypto.length === 0 && rankedCrypto.length === 0 && (
+                  <div className="text-center py-8 text-gray-400">
+                    <div className="text-lg">Market cap sıralaması yükleniyor...</div>
+                    <div className="text-sm mt-2">CoinMarketCap + Binance verisi bekleniyor</div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Last Update Info */}
         <div className="mt-6 text-center text-gray-400 text-sm">

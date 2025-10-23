@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam } from '@nestjs/
 import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
 import { TruncgilService } from './services/truncgil.service';
 import { BinanceService } from './services/binance.service';
+import { CoinMarketCapService } from './services/coinmarketcap.service';
 import { CacheService } from './services/cache.service';
 import { DynamicDataService } from './services/dynamic-data.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -15,6 +16,7 @@ export class FinansDataController {
   constructor(
     private readonly truncgilService: TruncgilService,
     private readonly binanceService: BinanceService,
+    private readonly coinMarketCapService: CoinMarketCapService,
     private readonly cacheService: CacheService,
     private readonly dynamicDataService: DynamicDataService,
     private readonly prismaService: PrismaService,
@@ -304,6 +306,42 @@ export class FinansDataController {
     }
   }
 
+  @Get('crypto/ranked')
+  @ApiOperation({ summary: 'Get crypto data sorted by market cap ranking' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Limit number of results (default: 100)' })
+  @ApiResponse({ status: 200, description: 'Returns crypto currency data sorted by CoinMarketCap ranking' })
+  async getRankedCryptoData(@Query('limit') limit?: string) {
+    try {
+      const data = await this.binanceService.getCryptoData();
+      const limitNum = parseInt(limit || '100', 10);
+      
+      // Filter only coins with ranking data and sort by rank
+      const rankedData = data
+        .filter(coin => coin.rank !== undefined && coin.rank !== null)
+        .sort((a, b) => (a.rank || Infinity) - (b.rank || Infinity))
+        .slice(0, limitNum);
+      
+      return {
+        success: true,
+        data: rankedData,
+        source: 'binance+coinmarketcap',
+        sortBy: 'marketCapRank',
+        timestamp: new Date().toISOString(),
+        count: rankedData.length,
+        total: data.length,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Failed to fetch ranked crypto data',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   @Get('crypto/:symbol')
   @ApiOperation({ summary: 'Get specific crypto symbol from Binance' })
   @ApiParam({ name: 'symbol', description: 'Crypto symbol (e.g., BTCUSDT, ETHUSDT, BTCTRY)' })
@@ -345,6 +383,74 @@ export class FinansDataController {
     }
   }
 
+  @Get('coinmarketcap/rankings')
+  @ApiOperation({ summary: 'Get CoinMarketCap ranking data' })
+  @ApiResponse({ status: 200, description: 'Returns CoinMarketCap ranking data for all cached coins' })
+  async getCoinMarketCapRankings() {
+    try {
+      const rankingData = this.coinMarketCapService.getAllRankingData();
+      const dataArray = Array.from(rankingData.values());
+      
+      // Sort by ranking
+      dataArray.sort((a, b) => a.rank - b.rank);
+      
+      return {
+        success: true,
+        data: dataArray,
+        source: 'coinmarketcap',
+        timestamp: new Date().toISOString(),
+        count: dataArray.length,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Failed to fetch CoinMarketCap ranking data',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('coinmarketcap/refresh')
+  @ApiOperation({ summary: 'Force refresh CoinMarketCap ranking data' })
+  @ApiResponse({ status: 200, description: 'CoinMarketCap data refresh triggered successfully' })
+  async forceRefreshCoinMarketCap() {
+    try {
+      const success = await this.coinMarketCapService.forceRefresh();
+      
+      if (!success) {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Failed to refresh CoinMarketCap data',
+          },
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+      
+      return {
+        success: true,
+        message: 'CoinMarketCap ranking data refresh triggered successfully',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Failed to refresh CoinMarketCap data',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   @Get('stats')
   @ApiOperation({ summary: 'Get service statistics' })
   @ApiResponse({ status: 200, description: 'Returns service statistics' })
@@ -366,6 +472,9 @@ export class FinansDataController {
         loadedSymbols: this.binanceService.getLoadedSymbolsCount(),
       };
 
+      // Get CoinMarketCap service statistics
+      const coinMarketCapStats = this.coinMarketCapService.getStats();
+
       return {
         success: true,
         stats: {
@@ -373,6 +482,7 @@ export class FinansDataController {
             cachedSymbols: cachedData?.length || 0,
           },
           binance: binanceStats,
+          coinMarketCap: coinMarketCapStats,
           lastUpdate: latestSnapshot?.timestamp || null,
           websocket: connectionStats,
           uptime: process.uptime(),

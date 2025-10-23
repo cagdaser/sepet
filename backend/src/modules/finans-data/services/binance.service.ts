@@ -1,9 +1,10 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
 import * as WebSocket from 'ws';
 import * as fs from 'fs';
 import * as path from 'path';
+import { CoinMarketCapService } from './coinmarketcap.service';
 
 export interface BinanceTickerResponse {
   symbol: string;
@@ -39,6 +40,13 @@ export interface NormalizedFinancialData {
   sellPrice?: number;
   timestamp: string;
   source: string;
+  // Enhanced fields with CoinMarketCap data
+  rank?: number;
+  marketCap?: number;
+  marketCapFormatted?: string;
+  volume24h?: number;
+  volume24hFormatted?: string;
+  volumeChange24h?: number;
 }
 
 interface BinanceSymbols {
@@ -61,7 +69,11 @@ export class BinanceService implements OnModuleInit, OnModuleDestroy {
   private maxReconnectAttempts = 5;
   private reconnectDelay = 5000; // 5 seconds
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    @Inject(forwardRef(() => CoinMarketCapService))
+    private coinMarketCapService: CoinMarketCapService,
+  ) {
     this.httpClient = axios.create({
       timeout: 10000,
       headers: {
@@ -82,7 +94,7 @@ export class BinanceService implements OnModuleInit, OnModuleDestroy {
 
   private loadSymbols() {
     try {
-      const symbolsPath = path.join(process.cwd(), 'backend/data/binance.json');
+      const symbolsPath = path.join(process.cwd(), 'data/binance.json');
       const symbolsData: BinanceSymbols = JSON.parse(fs.readFileSync(symbolsPath, 'utf8'));
       
       // Filter only USDT and TRY symbols
@@ -251,8 +263,12 @@ export class BinanceService implements OnModuleInit, OnModuleDestroy {
       const priceChangePercent = parseFloat(data.priceChangePercent);
       const bidPrice = parseFloat(data.bidPrice);
       const askPrice = parseFloat(data.askPrice);
+      const binanceVolume = parseFloat(data.quoteVolume);
 
       if (price > 0) {
+        // Get CoinMarketCap data for enhanced information
+        const cmcData = this.coinMarketCapService.getRankingData(symbol);
+        
         const normalizedData: NormalizedFinancialData = {
           symbol,
           type: 'CRYPTO',
@@ -263,13 +279,20 @@ export class BinanceService implements OnModuleInit, OnModuleDestroy {
           sellPrice: askPrice,
           timestamp,
           source: 'binance',
+          // Enhanced fields with CoinMarketCap data
+          rank: cmcData?.rank,
+          marketCap: cmcData?.marketCap,
+          marketCapFormatted: cmcData?.marketCap ? CoinMarketCapService.formatMarketCap(cmcData.marketCap) : undefined,
+          volume24h: cmcData?.volume24h || binanceVolume, // Prefer CMC volume, fallback to Binance
+          volume24hFormatted: CoinMarketCapService.formatVolume(cmcData?.volume24h || binanceVolume),
+          volumeChange24h: cmcData?.volumeChange24h,
         };
 
         normalized.push(normalizedData);
       }
     }
 
-    this.logger.log(`Normalized ${normalized.length} crypto symbols`);
+    this.logger.log(`Normalized ${normalized.length} crypto symbols with CoinMarketCap enhancement`);
     return normalized;
   }
 
